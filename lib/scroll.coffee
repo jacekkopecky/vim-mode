@@ -21,7 +21,7 @@ class ScrollDown extends Scroll
       @editor.setCursorScreenPosition([firstScreenRow + count, column])
 
   scrollUp: (count) ->
-    lastScreenRow = @rows.last - @scrolloff
+    lastScreenRow = @rows.last - @scrolloff - 2 # hack
     @editor.scrollToScreenPosition([lastScreenRow + count, 0])
 
 class ScrollUp extends Scroll
