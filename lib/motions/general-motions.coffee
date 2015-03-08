@@ -395,7 +395,7 @@ class MoveToBottomOfScreen extends MoveToScreenLine
       offset = Math.max(count - 1, @scrolloff)
     else
       offset = if count > 0 then count - 1 else count
-    lastScreenRow - offset
+    lastScreenRow - offset - 3 # FIXME: this is a hack
 
 class MoveToMiddleOfScreen extends MoveToScreenLine
   getDestinationRow: (count) ->

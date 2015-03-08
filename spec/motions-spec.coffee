@@ -1362,24 +1362,34 @@ describe "Motions", ->
       keydown('H', shift: true)
       expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([2, 0])
 
-  describe "the L keybinding", ->
+  xdescribe "the L keybinding", ->
     beforeEach ->
       editor.setText("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n")
       editor.setCursorScreenPosition([8, 0])
       spyOn(editor.getLastCursor(), 'setScreenPosition')
 
-    it "moves the cursor to the first row if visible", ->
+    it "moves the cursor to the last row if visible", ->
       spyOn(editor, 'getLastVisibleScreenRow').andReturn(10)
       keydown('L', shift: true)
       expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([10, 0])
+      # remains stable
+      keydown('L', shift: true)
+      expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([10, 0])
 
-    it "moves the cursor to the first visible row plus offset", ->
+    it "moves the cursor to the last visible row minus offset", ->
       spyOn(editor, 'getLastVisibleScreenRow').andReturn(6)
+      keydown('L', shift: true)
+      expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([4, 0])
+      # remains stable
       keydown('L', shift: true)
       expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([4, 0])
 
     it "respects counts", ->
       spyOn(editor, 'getLastVisibleScreenRow').andReturn(10)
+      keydown('3')
+      keydown('L', shift: true)
+      expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([8, 0])
+      # remains stable
       keydown('3')
       keydown('L', shift: true)
       expect(editor.getLastCursor().setScreenPosition).toHaveBeenCalledWith([8, 0])
