@@ -32,7 +32,7 @@ describe "Scrolling", ->
 
       it "moves the screen down by one and keeps cursor onscreen", ->
         keydown('e', ctrl: true)
-        expect(editor.scrollToScreenPosition).toHaveBeenCalledWith([7, 0])
+        expect(editor.scrollToScreenPosition).toHaveBeenCalledWith([5, 0])
         expect(editor.setCursorScreenPosition).toHaveBeenCalledWith([6, 0])
 
     describe "the ctrl-y keybinding", ->
