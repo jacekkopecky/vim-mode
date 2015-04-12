@@ -258,6 +258,7 @@ class VimState
         @processOpStack()
       catch e
         if (e instanceof Operators.OperatorError) or (e instanceof Motions.MotionError)
+          atom.beep()
           @resetCommandMode()
         else
           throw e
