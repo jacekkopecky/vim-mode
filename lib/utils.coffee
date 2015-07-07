@@ -14,7 +14,7 @@ module.exports =
       'character'
 
   ensureCursorIsWithinLine: (cursor, vimState) ->
-    return if vimState.mode is 'visual' or not cursor.selection.isEmpty()
+    return if vimState.mode is 'insert' or vimState.mode is 'visual' or not cursor.selection.isEmpty()
     {goalColumn} = cursor
     {row, column} = cursor.getBufferPosition()
     lastColumn = cursor.getCurrentLineBufferRange().end.column
