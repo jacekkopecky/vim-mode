@@ -16,15 +16,6 @@ module.exports =
     else
       'character'
 
-  ensureCursorIsWithinLine: (cursor, vimState) ->
-    return if vimState.mode is 'insert' or vimState.mode is 'visual' or not cursor.selection.isEmpty()
-    {goalColumn} = cursor
-    {row, column} = cursor.getBufferPosition()
-    lastColumn = cursor.getCurrentLineBufferRange().end.column
-    if column >= lastColumn - 1
-      cursor.setBufferPosition([row, Math.max(lastColumn - 1, 0)])
-    cursor.goalColumn ?= goalColumn
-
   # copied and simplified from atom/atom-keymap src/helpers.coffee
   isAtomModifier: (keystroke) ->
     AtomModifierRegex.test(keystroke)
