@@ -1,3 +1,6 @@
+# copied from atom/atom-keymap src/helpers.coffee
+AtomModifierRegex = /(ctrl|alt|shift|cmd)$/
+
 module.exports =
   # Public: Determines if a string should be considered linewise or character
   #
@@ -21,3 +24,7 @@ module.exports =
     if column >= lastColumn - 1
       cursor.setBufferPosition([row, Math.max(lastColumn - 1, 0)])
     cursor.goalColumn ?= goalColumn
+
+  # copied and simplified from atom/atom-keymap src/helpers.coffee
+  isAtomModifier: (keystroke) ->
+    AtomModifierRegex.test(keystroke)
