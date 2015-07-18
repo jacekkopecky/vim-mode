@@ -512,25 +512,29 @@ describe "VimState", ->
     beforeEach ->
       editor.setText "line one\n line two\n"
       editor.setCursorBufferPosition [0, 0]
+      spyOn(atom, 'beep')
 
     describe "in operator-pending mode", ->
       beforeEach ->
         keydown 'c'
 
-      it "cancels short pending operations on unrecognized keybinding", ->
-        keydown 'q' #cq doesn't work, should cancel
+      it "beeps on unrecognized keybinding, ignores them", ->
+        keydown 'q' #cq doesn't work, q not implemented so will beep
+        expect(atom.beep).toHaveBeenCalled()
         keydown 'w'
-        expect(editor.getCursorBufferPosition()).toEqual [0, 5]
-        expect(editor.getText()).toBe "line one\n line two\n"
-        expect(vimState.mode).toEqual 'command'
+        expect(editor.getCursorBufferPosition()).toEqual [0, 0]
+        expect(editor.getText()).toBe " one\n line two\n"
+        expect(vimState.mode).toEqual 'insert'
 
-      it "cancels long pending operations on unrecognized keybinding", ->
+      it "replays long pending operations and beeps on short unrecognized keybinding", ->
         keydown 'i'
-        keydown '3' #i3 is unrecognized, should cancel the whole `ci3` sequence
+        keydown '3' # i3 is unrecognized, replays 'i' and beeps, replays '3' which is recognized
+        # FIXME for some reason, the replay of 'i' in specs doesn't go to the editor so the beep doesn't happen
+        # expect(atom.beep).toHaveBeenCalled()
         keydown 'w'
-        expect(editor.getCursorBufferPosition()).toEqual [0, 5]
-        expect(editor.getText()).toBe "line one\n line two\n"
-        expect(vimState.mode).toEqual 'command'
+        expect(editor.getCursorBufferPosition()).toEqual [0, 0]
+        expect(editor.getText()).toBe "two\n"
+        expect(vimState.mode).toEqual 'insert'
 
     describe "in visual mode", ->
       beforeEach ->
@@ -538,8 +542,10 @@ describe "VimState", ->
 
       it "cancels whole unrecognized keybinding", ->
         keydown 'i'
-        keydown '3' #i3 is unrecognized, should cancel the whole `i3` sequence
+        keydown '3' # i3 is unrecognized, replays 'i' and beeps, replays '3' which is recognized
+        # FIXME for some reason, the replay of 'i' in specs doesn't go to the editor so the beep doesn't happen
+        # expect(atom.beep).toHaveBeenCalled()
         keydown 'w'
-        expect(editor.getCursorBufferPosition()).toEqual [0, 6]
-        expect(editor.getSelectedText()).toBe "line o"
+        expect(editor.getCursorBufferPosition()).toEqual [1, 7]
+        expect(editor.getSelectedText()).toBe "line one\n line t"
         expect(vimState.mode).toEqual 'visual'
