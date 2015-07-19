@@ -12,7 +12,7 @@ class MotionError
     @name = 'Motion Error'
 
 class Motion
-  operatesInclusively: true
+  operatesInclusively: false
   operatesLinewise: false
 
   constructor: (@editor, @vimState) ->
@@ -21,7 +21,9 @@ class Motion
     value = for selection in @editor.getSelections()
       if @isLinewise()
         @moveSelectionLinewise(selection, count, options)
-      else if @isInclusive()
+      else if @vimState.mode is 'visual'
+        @moveSelectionVisual(selection, count, options)
+      else if @operatesInclusively
         @moveSelectionInclusively(selection, count, options)
       else
         @moveSelection(selection, count, options)
@@ -62,10 +64,27 @@ class Motion
       selection.setBufferRange([[newStartRow, 0], [newEndRow + 1, 0]])
 
   moveSelectionInclusively: (selection, count, options) ->
+    return @moveSelectionVisual(selection, count, options) unless selection.isEmpty()
+
+    selection.modifySelection =>
+      @moveCursor(selection.cursor, count, options)
+      return if selection.isEmpty()
+
+      if selection.isReversed()
+        # for backward motion, add the original starting character of the motion
+        {start, end} = selection.getBufferRange()
+        selection.setBufferRange([start, [end.row, end.column + 1]])
+      else
+        # for forward motion, add the ending character of the motion
+        selection.cursor.moveRight()
+
+  moveSelectionVisual: (selection, count, options) ->
     selection.modifySelection =>
       range = selection.getBufferRange()
       [oldStart, oldEnd] = [range.start, range.end]
 
+      # in visual mode, atom cursor is after the last selected character,
+      # so here put cursor in the expected place for the following motion
       wasEmpty = selection.isEmpty()
       wasReversed = selection.isReversed()
       unless wasEmpty or wasReversed
@@ -73,6 +92,7 @@ class Motion
 
       @moveCursor(selection.cursor, count, options)
 
+      # put cursor back after the last character so it is also selected
       isEmpty = selection.isEmpty()
       isReversed = selection.isReversed()
       unless isEmpty or isReversed
@@ -81,10 +101,15 @@ class Motion
       range = selection.getBufferRange()
       [newStart, newEnd] = [range.start, range.end]
 
+      # if we reversed or emptied a normal selection
+      # we need to select again the last character deselected above the motion
       if (isReversed or isEmpty) and not (wasReversed or wasEmpty)
         selection.setBufferRange([newStart, [newEnd.row, oldStart.column + 1]])
+
+      # if we re-reversed a reversed non-empty selection,
+      # we need to keep the last character of the old selection selected
       if wasReversed and not wasEmpty and not isReversed
-        selection.setBufferRange([[newStart.row, oldEnd.column - 1], newEnd])
+        selection.setBufferRange([[oldEnd.row, oldEnd.column - 1], newEnd])
 
       # keep a single-character selection non-reversed
       range = selection.getBufferRange()
@@ -104,9 +129,6 @@ class Motion
       @vimState?.submode is 'linewise'
     else
       @operatesLinewise
-
-  isInclusive: ->
-    @vimState.mode is 'visual' or @operatesInclusively
 
 class CurrentSelection extends Motion
   constructor: (@editor, @vimState) ->
@@ -173,15 +195,11 @@ class MotionWithInput extends Motion
     @complete = true
 
 class MoveLeft extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveLeft() if not cursor.isAtBeginningOfLine() or settings.wrapLeftRightMotion()
 
 class MoveRight extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, =>
       wrapToNextLine = settings.wrapLeftRightMotion()
@@ -211,15 +229,11 @@ class MoveDown extends Motion
         cursor.moveDown()
 
 class MoveToPreviousWord extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveToBeginningOfWord()
 
 class MoveToPreviousWholeWord extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, =>
       cursor.moveToBeginningOfWord()
@@ -236,7 +250,6 @@ class MoveToPreviousWholeWord extends Motion
 
 class MoveToNextWord extends Motion
   wordRegex: null
-  operatesInclusively: false
 
   moveCursor: (cursor, count=1, options) ->
     _.times count, =>
@@ -267,6 +280,7 @@ class MoveToNextWholeWord extends MoveToNextWord
   wordRegex: WholeWordOrEmptyLineRegex
 
 class MoveToEndOfWord extends Motion
+  operatesInclusively: true
   wordRegex: null
 
   moveCursor: (cursor, count=1) ->
@@ -291,8 +305,6 @@ class MoveToEndOfWholeWord extends MoveToEndOfWord
   wordRegex: WholeWordRegex
 
 class MoveToNextParagraph extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveToBeginningOfNextParagraph()
@@ -315,8 +327,6 @@ class MoveToAbsoluteLine extends MoveToLine
     cursor.moveToEndOfLine() if cursor.getBufferColumn() is 0
 
 class MoveToRelativeLine extends MoveToLine
-  operatesLinewise: true
-
   moveCursor: (cursor, count=1) ->
     {row, column} = cursor.getBufferPosition()
     cursor.setBufferPosition([row + (count - 1), 0])
@@ -331,15 +341,11 @@ class MoveToScreenLine extends MoveToLine
     cursor.setScreenPosition([@getDestinationRow(count), 0])
 
 class MoveToBeginningOfLine extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveToBeginningOfLine()
 
 class MoveToFirstCharacterOfLine extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveToBeginningOfLine()
@@ -347,7 +353,6 @@ class MoveToFirstCharacterOfLine extends Motion
 
 class MoveToFirstCharacterOfLineAndDown extends Motion
   operatesLinewise: true
-  operatesInclusively: true
 
   moveCursor: (cursor, count=0) ->
     _.times count-1, ->
@@ -356,8 +361,6 @@ class MoveToFirstCharacterOfLineAndDown extends Motion
     cursor.moveToFirstCharacterOfLine()
 
 class MoveToLastCharacterOfLine extends Motion
-  operatesInclusively: false
-
   moveCursor: (cursor, count=1) ->
     _.times count, ->
       cursor.moveToEndOfLine()
@@ -384,7 +387,6 @@ class MoveToLastNonblankCharacterOfLineAndDown extends Motion
 
 class MoveToFirstCharacterOfLineUp extends Motion
   operatesLinewise: true
-  operatesInclusively: true
 
   moveCursor: (cursor, count=1) ->
     _.times count, ->
